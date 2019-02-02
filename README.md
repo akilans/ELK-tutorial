@@ -240,3 +240,163 @@
 "has_child" : { "type" : "film" , "query" : { "match" : { "title" : "The Force Awakens" } } }
 }
 }'
+
+### Searching in Elasticsearch
+
+    * Simple Search [Not simpler, need to do URL encode for complex queries] 
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?q=title:star&pretty"
+
+    * Body Request - easy to read
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?pretty" -d '
+> {
+> "query":{
+> "match" : {
+> "title" : "star" 
+> }
+> }
+> }'
+
+    * Query with Filters better for searching
+
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/series/movie/_search?pretty" -d '
+> {
+> "query" : {
+> "bool" : {
+> "must" : { "term" : { "title" : "trek" } },
+> "filter" : { "range" : { "year" : { "gte" : 2010 }}}
+> }
+> }
+> }'
+
+    * match_phrase - must find all terms in correct order
+    * slop - order matters but if your'e ok with some words in between the term [ if slop 1 means you are ok one word in between the term]
+
+    * The following command returns "star trek beyond" title
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?pretty" -d '
+> {
+> "query" : {
+> "match_phrase" : {
+> "title" : { "query" : "star beyond" , "slop" : 1 }
+> }
+> }
+> }'
+
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?pretty" -d '
+{
+"query" : {
+"bool" : {
+"must" : { "match_phrase" : { "title" : "star wars" }},
+"filter" : { "range" : { "year" : { "gt" : 1980 } } } 
+}
+}
+}'
+
+    * pagination - size & from
+
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?size=2&pretty"
+
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?from=1&size=2&pretty"
+
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?pretty" -d '
+{
+"from" : 1,
+"size" : 2,
+"query" : {
+"match" : {
+"genre" : "Sci-Fi"
+}
+}
+}'
+
+    * sorting - number based sorting works fine but text based sorting is difficult. It can be decided during mapping. Else drop the index and create mappings with raw and import it again
+
+        - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?sort=year&pretty"
+
+    * Delete movies index and create mappings
+
+        - curl -H "Content-Type: application/json" -XDELETE "http://192.168.33.11:9200/movies"
+
+        - curl -H "Content-Type: application/json" -XPUT "http://192.168.33.11:9200/movies" -d '
+> {
+> "mappings" : {
+> "movie" : {
+> "properties" : {
+> "title" : { "type" : "text" , "fields" : { "raw" : { "type" : "keyword"} } }
+> }
+> }
+> }
+> }'
+
+        - curl -H "Content-Type: application/json" -XPUT "http://192.168.33.11:9200/movies/_bulk?pretty" --data-binary @movies.json 
+
+        - url -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?pretty" -d ' 
+{
+"sort" : "year"
+}'
+
+
+        - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?sort=title.raw&pretty"
+
+        - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?pretty" -d ' 
+{
+"sort" : "title.raw"
+}'
+
+        - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/_search?pretty" -d '
+> {
+> "query" : {
+> "bool" : {
+> "must" : { "match" : { "genre" : "Sci-Fi" } },
+> "must_not" : { "match" : { "title" : "trek" } },
+> "filter" : { "range" : { "year" : { "gte" : 2010 , "lt" : 2015 } } }
+> }
+> }
+> }'
+
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/_search?pretty" -d '
+{
+"sort" : "title.raw",
+"query" : {
+"bool" : {
+"must" : { "match" : { "genre" : "Sci-Fi" } },
+"filter" : { "range" : { "year" : { "lt" : 1960 } } }
+}                                                    
+}
+}'
+
+    * fuzziness - allows small typos error [ akilan - akilen - ahilan allow fuzziness 1]
+
+    * Interstellar is the correct title
+
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?pretty" -d '
+{
+"query" : {
+"fuzzy" : {
+"title" : { "value" : "Intersteller" , "fuzziness" : 2 }
+}
+}
+}'
+
+    * pefpix and wildcard
+    
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?pretty" -d '
+{
+"query" : {
+"prefix": {
+> "title" : "sta"
+> }
+> }
+> }'
+
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?pretty" -d '
+{
+"query" : {
+"wildcard": {
+"title" : "sta*"
+}
+}
+}'
+
+
+
+    - 
