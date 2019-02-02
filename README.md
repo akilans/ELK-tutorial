@@ -397,6 +397,38 @@
 }
 }'
 
+    * Elasticsearch - Google search, Youtube search like feature can be achieved by "Defining Analyzer", Map the analyser to the Index, Pass the analyser in Search query. It is called Ngram - Explore more if you want
 
 
-    - 
+## Importing Data from Different Sources
+
+    * Delete the previous index
+    * Download the Dataset
+    * Use Python to convert it to JSON format
+    * Insert into Elasticsearch
+
+    - python3 MoviesToJson.py > moremovies.json
+
+    - curl -H "Content-Type: application/json" -XDELETE "http://192.168.33.11:9200/movies"
+
+    - curl -H "Content-Type: application/json" -XPUT "http://192.168.33.11:9200/movies/_bulk?pretty" --data-binary @moremovies.json
+
+    * Another way to use packages for elasticsearch
+
+    - wget http://media.sundog-soft.com/es/IndexTags.py
+
+    - sudo pip3 install elasticsearch
+
+    - python3 IndexTags.py
+
+
+## Logstash
+
+    * Collect data from different systems and feed it ElasticSearch [ Many others ]
+    * sudo rpm -i logstash.rpm
+    * create a file under /etc/logstash/conf.d/logstash.conf
+    * List all the indices
+        - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/_cat/indices?pretty"
+    * cd /usr/share/logstash and run the below command
+        - bin/logstash -f /etc/logstash/conf.d/logstash.conf
+    * Edit the access_log file and save. Logstash starts to export data into Elasticsearch
