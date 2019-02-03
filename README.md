@@ -426,9 +426,26 @@
 
     * Collect data from different systems and feed it ElasticSearch [ Many others ]
     * sudo rpm -i logstash.rpm
-    * create a file under /etc/logstash/conf.d/logstash.conf
+    * create a file under /etc/logstash/conf.d/apache-logstash.conf
     * List all the indices
         - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/_cat/indices?pretty"
     * cd /usr/share/logstash and run the below command
-        - bin/logstash -f /etc/logstash/conf.d/logstash.conf
+        - bin/logstash -f /etc/logstash/conf.d/apache-logstash.conf
     * Edit the access_log file and save. Logstash starts to export data into Elasticsearch
+
+## Importing from MySQL table
+
+    - CREATE DATABASE movielens;
+
+    - CREATE TABLE movies (
+    -> movieID INT PRIMARY KEY NOT NULL,
+    -> title TEXT,
+    -> releaseDate DATE
+    -> );
+
+
+    - LOAD DATA LOCAL INFILE "/home/akilan/Desktop/ELK-tutorial/ml-100k/u.item" INTO TABLE movies FIELDS TERMINATED BY '|'
+    -> (movieID, title, @var3)
+    -> set releaseDate = STR_TO_DATE(@var3, "%d-%M-%Y");
+
+    * sudo /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/mysql-logstash.conf 
