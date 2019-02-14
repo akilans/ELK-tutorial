@@ -449,3 +449,151 @@
     -> set releaseDate = STR_TO_DATE(@var3, "%d-%M-%Y");
 
     * sudo /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/mysql-logstash.conf 
+
+## Importing from AWS S3
+
+    * Create a S3 bucket
+    * Create user with s3 read access [copy access key and secret key ]
+    * Upload access.log to s3 bucket
+    * Create s3-logstash.conf and start logstash
+    * sudo /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/s3-logstash.conf
+
+## Aggregations
+
+* List all the ratings
+    curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/ratings/rating/_search?size=0&pretty" -d '
+    {
+    "aggs": {
+    "ratings_agg" : {
+    "terms" : {
+    "field" : "rating" 
+    }
+    }
+    }
+    }'
+* Query only for 5.0 ratings and aggregate
+
+    curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/ratings/rating/_search?size=0&pretty" -d '
+> {
+> "query" : {
+> "match" : {
+> "rating" : "5.0"
+> }
+> },
+> "aggs" : {
+> "rating" : {
+> "terms" : {
+> "field" : "rating"
+> }
+> }
+> }
+> }'
+
+* Find average rating for "Braveheart movie" 
+
+    url -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/ratings/rating/_search?size=0&pretty" -d '
+{
+"query" : {
+"match_phrase" : {
+"title" : "Braveheart (1995)"
+}
+},
+"aggs" : {
+"avg_rating_braveheart" : {
+"avg" : {
+"field" : "rating" 
+}
+}
+}
+}'
+
+* Histogram - Group by some interval [ rating by 1, 2, 3, 4, 5]
+
+    -  curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/ratings/rating/_search?size=0&pretty" -d '
+{         
+"aggs" : {
+"histogram_rating" : {
+"histogram" : {
+"field" : "rating",
+"interval" : "1.0"
+}
+}
+} 
+}'
+
+* Group number of movies released 10 years
+
+    - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/movies/movie/_search?size=0&pretty" -d '
+{         
+"aggs" : {
+"decade_movies" : {
+"histogram" : {
+"field" : "year",
+"interval" : 10
+}
+}
+} 
+}'
+
+    * Histogram based on timestamp [hour,month, year etc]
+
+        - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/logstash-2017.05.04/_search?size=0&pretty" -d '
+> {
+> "aggs" : {
+> "timestamp_agg" : {
+> "date_histogram" : {
+> "field" : "@timestamp",
+> "interval" : "hour"
+> }
+> }
+> }
+> }'
+
+        -  curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/logstash-2017.05.04/_search?size=0&pretty" -d '
+> {
+> "query" : {
+> "match" : {
+> "agent" : "Googlebot"
+> }
+> },
+> "aggs" : {
+> "timestamp_aggs" : {
+> "date_histogram" : {
+> "field" : "@timestamp",
+> "interval" : "minute"
+> }
+> }
+> }
+> }'
+
+    * Site wentdown history
+
+        - curl -H "Content-Type: application/json" -XGET "http://192.168.33.11:9200/logstash-2017.05.05/_search?size=0&pretty" -d '
+{
+"query" : {
+"match" : {
+"response" : "500"
+}
+},
+"aggs" : {
+"timestamp_aggs" : {
+"date_histogram" : {
+"field" : "@timestamp",
+"interval" : "minute"
+}
+}
+}
+}'
+
+## Filebeat
+
+    * Lightweight Shipper for Logs
+    * sudo bin/elasticsearch-plugin install ingest-geoip
+    * sudo bin/elasticsearch-plugin install ingest-user-agent
+    * sudo systemctl restart elasticsearch
+    * wget https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-6.6.0-x86_64.rpm
+    * sudo rpm -i filebeat-6.6.0-x86_64.rpm
+    * sudo vi /etc/filebeat/modules.d/apache2.yaml [ Edit the path]
+    * sudo filebeat setup
+    * sudo systemctl start filebeat
+    * sudo filebeat -e
